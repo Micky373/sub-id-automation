@@ -35,7 +35,7 @@ if st.button("Analyze"):
     
     if click_data and revenue_data:
 
-        if os.path.exists('synthesized_data'): os.mkdir('synthesized_data')
+        if not os.path.exists('synthesized_data'): os.mkdir('synthesized_data')
             
         # Save the uploaded file to the local directory
         with open(temp_click_path, "wb") as f:
