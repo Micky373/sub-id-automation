@@ -15,17 +15,20 @@ import streamlit as st # For simple web app
 
 # A function to zip the files
 def zip_files(file_paths, output_zip_file):
+    
     with zipfile.ZipFile(output_zip_file, 'w') as zipf:
         for file in file_paths:
             zipf.write(file, os.path.basename(file))
 
 # Reading excel file
 def read_excel_file(path):
+
     with open(path,'rb') as file:
         ole = OleFileIO_PL.OleFileIO(file)
         if ole.exists('Workbook'):
             d = ole.openstream('Workbook')
             data=pd.read_excel(d,engine='xlrd')
+
     return data
 
 # Function to apply formatting to a sheet
@@ -89,33 +92,64 @@ def format_sheet(sheet, conditional_formating = False,error_sheet=False,warning_
 
     if conditional_formating:
 
-        # Find the column with the header "Average Percentage"
-        avg_col = None
-        for cell in sheet[1]:
-            if cell.value == "Average Percentage":
-                avg_col = cell.column
-                break
+        if conditional_formating == 'registration_rate':
 
-        if avg_col is None:
-            print("Column 'Average Percentage' not found.")
-            return
+            # Find the column with the header "Average Percentage"
+            avg_col = None
+            for cell in sheet[1]:
+                if cell.value == "Average Percentage":
+                    avg_col = cell.column
+                    break
 
-        for row in sheet.iter_rows(min_row=2):
-            avg_cell = row[avg_col - 1]
-            try:
-                value = float(avg_cell.value)
-                if value < 40:
-                    row_fill = red_fill
-                elif 40 <= value < 70:
-                    row_fill = yellow_fill
-                elif value >= 70:
-                    row_fill = green_fill
-                
-                for cell in row:
-                    cell.fill = row_fill
-            except (ValueError, TypeError):
-                continue
-    
+            if avg_col is None:
+                print("Column 'Average Percentage' not found.")
+                return
+
+            for row in sheet.iter_rows(min_row=2):
+                avg_cell = row[avg_col - 1]
+                try:
+                    value = float(avg_cell.value)
+                    if value < 40:
+                        row_fill = red_fill
+                    elif 40 <= value < 70:
+                        row_fill = yellow_fill
+                    elif value >= 70:
+                        row_fill = green_fill
+                    
+                    for cell in row:
+                        cell.fill = row_fill
+                except (ValueError, TypeError):
+                    continue
+
+        elif conditional_formating == 'margin':
+
+            # Find the column with the header "Margin"
+            avg_col = None
+            for cell in sheet[1]:
+                if cell.value == "Average Margin":
+                    avg_col = cell.column
+                    break
+
+            if avg_col is None:
+                print("Column 'Margin' not found.")
+                return
+
+            for row in sheet.iter_rows(min_row=2):
+                avg_cell = row[avg_col - 1]
+                try:
+                    value = float(avg_cell.value)
+                    if value < 40:
+                        row_fill = red_fill
+                    elif 40 <= value < 70:
+                        row_fill = yellow_fill
+                    elif value >= 70:
+                        row_fill = green_fill
+                    
+                    for cell in row:
+                        cell.fill = row_fill
+                except (ValueError, TypeError):
+                    continue
+
     if error_sheet:
 
         for row in sheet.iter_rows(min_row=2):
@@ -232,7 +266,8 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
         cost_progress_bar
     )
 
-    df['Margin'] = (df['Revenue'] - df['Cost']) / df['Revenue']
+    df['Margin'] = ((df['Revenue'] - df['Cost']) / df['Revenue']) * 100
+    df['Margin'].fillna(0,inplace=True)
     df['Margin'] = df['Margin'].apply(lambda margin:round(margin,2) if margin != np.inf else 0)
 
     # Getting all the publishers
@@ -253,6 +288,17 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
 
         # Getting the publishers data frame
         df_for_analysis = df[df['Affiliate Name'] == publisher]
+
+        # Getting the pattern for allinbox
+        if publisher == 'All Inbox(Jason Jacobs)':
+            df_for_analysis['S1.1'] = df_for_analysis['S1'].apply(lambda s1:s1[5:11])
+            df_for_analysis['S1.2'] = df_for_analysis['S1'].apply(lambda s1:s1[11:])
+            df_for_analysis = df_for_analysis[[
+                'Date', 'Affiliate Name', 'Affiliate ID', 'Revenue Tracker ID', 'S1','S1.1','S1.2',
+                'User Registration', 'Cake Clicks (All Clicks)', 'Percentage',
+                'Revenue', 'Cost', 'Margin'
+            ]]
+
         data_frames['Original File'] = df_for_analysis
 
         # Getting the rows with error ids
@@ -285,6 +331,42 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
         # st.dataframe(temp_df)
         duplicated_sub_ids = temp_df[temp_df['Number of Repetition'] > 1]['S1'].values
 
+        if publisher == 'All Inbox(Jason Jacobs)':
+
+            data = {
+                'S1.2' : [],
+                'User Registration' : [],
+                'Cake Clicks (All Clicks)' : [],
+                'Average Percentage' : [],
+                'Revenue' : [],
+                'Cost' : [],
+                'Average Margin' : []
+            }
+
+            for id in list(set(df_for_analysis['S1.2'])):
+                
+                total_reg = df_for_analysis[df_for_analysis['S1.2'] == id]['User Registration'].sum()
+                total_clicks = df_for_analysis[df_for_analysis['S1.2'] == id]['Cake Clicks (All Clicks)'].sum()
+                total_revenue = df_for_analysis[df_for_analysis['S1.2'] == id]['Revenue'].sum()
+                total_cost = df_for_analysis[df_for_analysis['S1.2'] == id]['Cost'].sum()
+                percentage = round((total_reg/total_clicks) * 100 , 2)
+                margin = round(((total_revenue - total_cost)/total_revenue) * 100 , 2)
+
+
+                data['S1.2'].append(id)
+                data['User Registration'].append(total_reg)
+                data['Cake Clicks (All Clicks)'].append(total_clicks)
+                data['Average Percentage'].append(percentage)
+                data['Revenue'].append(total_revenue)
+                data['Cost'].append(total_cost)
+                data['Average Margin'].append(margin)
+
+            pattern_df = pd.DataFrame(data)
+            pattern_df['Average Margin'].fillna(0.00,inplace = True)
+            pattern_df = pattern_df.sort_values(by = ['Average Margin','User Registration'],ascending = False)
+
+            data_frames['Pattern (Surfix)'] = pattern_df
+
         # Let us create a new column letting us know if the id is duplicated or not
         df_for_analysis['Duplicate'] = df_for_analysis['S1'].apply(lambda s1 : 'Yes' if s1 in duplicated_sub_ids else 'No')
 
@@ -292,7 +374,11 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
         dup_df = df_for_analysis[df_for_analysis['Duplicate'] == 'Yes']
         data_frames['Dup_Sub_IDs'] = dup_df
         no_dup_df = df_for_analysis[df_for_analysis['Duplicate'] == 'No']
+        no_dup_df['Average Margin'] = no_dup_df['Margin']
+        no_dup_df['Average Percentage'] = no_dup_df['Percentage']
         data_frames['Not_Dup_Sub_IDs'] = no_dup_df
+        non_dup_sorted_by_margin = no_dup_df.sort_values(by = ['Average Margin','S1'],ascending = False)
+        non_dup_sorted_by_percentage = no_dup_df.sort_values(by = ['Average Percentage','S1'],ascending = False)
 
         # Getting the duplicated sub ids that has more than 40% registration rate
         dup_more_40 = dup_df[(dup_df['Percentage'] > 40) & (dup_df['Percentage'] != np.inf)]
@@ -305,6 +391,10 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
         # Getting the duplicated sub ids that has exactly 40% registration rate
         dup_exactly_40 = dup_df[(dup_df['Percentage'] == 40) & (dup_df['Percentage'] != np.inf)]
         data_frames['Dup_Sub_IDs=40%_regi_rate'] = dup_exactly_40
+
+        # Getting the non duplicated sub ids and arranging them
+        data_frames['Non-Dup_Sub_IDs_sorted_by_perc'] = non_dup_sorted_by_percentage
+        data_frames['Non-Dup_Sub_IDs_sorted_by_margin'] = non_dup_sorted_by_margin
 
         # Getting the non duplicated sub ids that has more than 40% registration rate
         non_dup_more_40 = no_dup_df[(no_dup_df['Percentage'] > 40) & (no_dup_df['Percentage'] != np.inf)]
@@ -330,7 +420,19 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
 
             average_reg_rate = round((total_registration/total_clicks) * 100 , 2)
 
-            return total_clicks,total_registration,average_reg_rate
+            total_cost = dup_sorted_df[dup_sorted_df['S1'] == id]['Cost'].sum()
+
+            total_revenue = dup_sorted_df[dup_sorted_df['S1'] == id]['Revenue'].sum()
+
+            try:
+
+                average_margin = round(((total_revenue - total_cost) / total_revenue) * 100 , 2)
+
+            except:
+
+                average_margin = 0
+
+            return total_clicks,total_registration,average_reg_rate,total_revenue,total_cost,average_margin
         
         registration_mapping = {}
 
@@ -338,37 +440,127 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
 
         click_mapping = {}
 
+        revenue_mapping = {}
+
+        cost_mapping = {}
+
+        margin_mapping = {}
+
         for id in duplicated_sub_ids:
 
-            total_clicks,total_registration,avg_reg_rate = get_average_registration_rate(id)
+            total_clicks,total_registration,avg_reg_rate,total_revenue,total_cost,average_margin = get_average_registration_rate(id)
             registration_mapping[id] = avg_reg_rate
             reg_mapping[id] = total_registration
             click_mapping[id] = total_clicks
+            revenue_mapping[id] = total_revenue
+            cost_mapping[id] = total_cost
+            margin_mapping[id] = average_margin
 
         # Sorting the sub ids
         dup_sorted_df['Average Percentage'] = dup_sorted_df['S1'].apply(lambda s1:registration_mapping[s1])
-        dup_sorted_df = dup_sorted_df.sort_values(by = ['Average Percentage','S1'],ascending = False)
+        dup_sorted_df['Average Margin'] = dup_sorted_df['S1'].apply(lambda s1:margin_mapping[s1])
+
+        # Doing duplicate sorting analysis based on average registration rate 
+        dup_sorted_df_by_reg_rate = dup_sorted_df.sort_values(by = ['Average Percentage','S1'],ascending = False)
         temp_dfs = []
         temp_list_id = []
-        for id in list(dup_sorted_df['S1'].values):
+        for id in list(dup_sorted_df_by_reg_rate['S1'].values):
 
             if id not in temp_list_id:
-                temp_dfs.append(dup_sorted_df[dup_sorted_df['S1'] == id])
-                total_data = ['','','','','Total',reg_mapping[id],click_mapping[id],'','','','','',registration_mapping[id]]
+
+                temp_dfs.append(dup_sorted_df_by_reg_rate[dup_sorted_df_by_reg_rate['S1'] == id])
+
+                if publisher == 'All Inbox(Jason Jacobs)':
+                    total_data = ['','','','',
+                                'Total','','',
+                                reg_mapping[id],
+                                click_mapping[id],
+                                '',
+                                revenue_mapping[id],
+                                cost_mapping[id],
+                                '',
+                                '',
+                                registration_mapping[id],
+                                margin_mapping[id]
+                                ]
+                    
+                else:
+                    total_data = ['','','','',
+                                'Total',
+                                reg_mapping[id],
+                                click_mapping[id],
+                                '',
+                                revenue_mapping[id],
+                                cost_mapping[id],
+                                '',
+                                '',
+                                registration_mapping[id],
+                                margin_mapping[id]
+                                ]
 
                 total_data_df = pd.DataFrame([total_data],
-                                                columns=dup_sorted_df.columns)
+                                                columns=dup_sorted_df_by_reg_rate.columns)
                 
                 temp_dfs.append(total_data_df)
 
             temp_list_id.append(id)
 
         if len(temp_dfs) > 0:
-            dup_sorted_df = pd.concat(temp_dfs,axis = 0)
+            dup_sorted_df_by_reg_rate = pd.concat(temp_dfs,axis = 0)
+        else:
+            pass
+
+        # Doing duplicate analysis based on margin
+        dup_sorted_df_by_margin = dup_sorted_df.sort_values(by = ['Average Margin','S1'],ascending = False)
+        temp_dfs = []
+        temp_list_id = []
+        for id in list(dup_sorted_df_by_margin['S1'].values):
+
+            if id not in temp_list_id:
+                temp_dfs.append(dup_sorted_df_by_margin[dup_sorted_df_by_margin['S1'] == id])
+
+                if publisher == 'All Inbox(Jason Jacobs)':
+                    total_data = ['','','','',
+                                'Total','','',
+                                reg_mapping[id],
+                                click_mapping[id],
+                                '',
+                                revenue_mapping[id],
+                                cost_mapping[id],
+                                '',
+                                '',
+                                registration_mapping[id],
+                                margin_mapping[id]
+                                ]
+                    
+                else:
+                    total_data = ['','','','',
+                                'Total',
+                                reg_mapping[id],
+                                click_mapping[id],
+                                '',
+                                revenue_mapping[id],
+                                cost_mapping[id],
+                                '',
+                                '',
+                                registration_mapping[id],
+                                margin_mapping[id]
+                                ]
+
+                total_data_df = pd.DataFrame([total_data],
+                                                columns=dup_sorted_df_by_margin.columns)
+                
+                temp_dfs.append(total_data_df)
+
+            temp_list_id.append(id)
+
+        if len(temp_dfs) > 0:
+            dup_sorted_df_by_margin = pd.concat(temp_dfs,axis = 0)
         else:
             pass
             
-        data_frames['Duplicated_Sorted_by_avg_reg_rate'] = dup_sorted_df
+        data_frames['Duplicated_Sorted_by_avg_reg_rate'] = dup_sorted_df_by_reg_rate
+        data_frames['Duplicated_Sorted_by_avg_margin'] = dup_sorted_df_by_margin
 
         data_frames['Abnormal Sub IDs'] = abnormal_df
         data_frames['Errors'] = error_df
@@ -390,7 +582,11 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
                 findings = False
 
                 # Apply styles
-                if sheet_name == 'Duplicated_Sorted_by_avg_reg_rate': conditional_formating = True
+                if sheet_name in ['Non-Dup_Sub_IDs_sorted_by_perc','Duplicated_Sorted_by_avg_reg_rate']: 
+                    conditional_formating = 'registration_rate'
+
+                if sheet_name in ['Non-Dup_Sub_IDs_sorted_by_margin','Duplicated_Sorted_by_avg_margin','Pattern (Surfix)']: 
+                    conditional_formating = 'margin'
                     
                 if sheet_name in ['Must Stop 0%','Errors'] : error_sheet = True
 
