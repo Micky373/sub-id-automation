@@ -402,7 +402,7 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
 
         # Getting the non duplicated sub ids that has less than 40% registration rate
         non_dup_less_40 = no_dup_df[(no_dup_df['Percentage'] < 40) & (no_dup_df['Percentage'] != np.inf)]
-        data_frames['Not-Dup_Sub_IDs<40%_reg_rate'] = non_dup_less_40
+        non_dup_more_40 = non_dup_less_40
 
         # Getting the non duplicated sub ids that has exactly 40% registration rate
         non_dup_exactly_40 = no_dup_df[(no_dup_df['Percentage'] == 40) & (no_dup_df['Percentage'] != np.inf)]
@@ -564,7 +564,15 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
 
         data_frames['Abnormal Sub IDs'] = abnormal_df
         data_frames['Errors'] = error_df
-        data_frames['Must Stop 0%'] = df_for_analysis[df_for_analysis['Percentage'] == 0]
+
+        dup_must_stop = dup_sorted_df_by_reg_rate[dup_sorted_df_by_reg_rate['Average Percentage'] == 0]
+        non_dup_must_stop = non_dup_sorted_by_percentage[non_dup_sorted_by_percentage['Average Percentage'] == 0]
+        must_stop_df = pd.concat(
+            [dup_must_stop,non_dup_must_stop],
+            axis = 0
+        )
+
+        data_frames['Must Stop 0%'] = must_stop_df
         data_frames['Conclusion'] = pd.DataFrame()
 
         with pd.ExcelWriter(f'{temp_dir}{publisher}.xlsx', engine='openpyxl') as writer:
@@ -593,12 +601,24 @@ def get_report(click_reg_path,revenue_data_path,zip_file_path):
                 if sheet_name == 'Abnormal Sub IDs' : warning_sheet = True
 
                 if sheet_name == 'Conclusion' : 
+
+                    below_40 = len(
+                        list(set(dup_sorted_df_by_reg_rate[dup_sorted_df_by_reg_rate['Average Percentage'] < 40]['S1'].values))) + \
+                            len(list(set(non_dup_less_40['S1'].values))) - 1
+
+                    abv_40 = len(
+                        list(set(dup_sorted_df_by_reg_rate[dup_sorted_df_by_reg_rate['Average Percentage'] > 40]['S1'].values))) + \
+                            len(list(set(non_dup_more_40['S1'].values))) - 1
+
+                    exact_40 = len(
+                        list(set(dup_sorted_df_by_reg_rate[dup_sorted_df_by_reg_rate['Average Percentage'] == 40]['S1'].values))) + \
+                            len(list(set(non_dup_exactly_40['S1'].values))) - 1
+                    
                     unique_ids = len(list(set(df_for_analysis['S1'].values)))
-                    must_stop = df_for_analysis[df_for_analysis['Percentage'] == 0].shape[0]
-                    below_40 = df_for_analysis[df_for_analysis['Percentage'] < 40].shape[0]
-                    exact_40 = df_for_analysis[df_for_analysis['Percentage'] == 40].shape[0]
-                    abv_40 = df_for_analysis[df_for_analysis['Percentage'] > 40].shape[0]
-                    errors = error_df.shape[0]
+                   
+                    must_stop = len(list(set(must_stop_df['S1'].values))) - 1
+                    
+                    errors = len(list(set(error_df['S1'].values)))
 
                     findings = [
                         f'We have {unique_ids} unique s1',
