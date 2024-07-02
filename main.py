@@ -33,7 +33,7 @@ if st.button("Analyze"):
             f.write(click_data.getbuffer())
 
         with st.spinner("Analyzing..."):
-            utils_2.get_report(temp_click_path,zip_file_path)
+            utils.get_report(temp_click_path,zip_file_path)
 
         st.success('Report generation complete!')
         st.download_button(
