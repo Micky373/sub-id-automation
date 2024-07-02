@@ -1,6 +1,6 @@
 # Importing useful libraries
 import streamlit as st
-from scripts import utils_2
+from scripts import utils
 
 # For operating system related tasks
 import shutil
