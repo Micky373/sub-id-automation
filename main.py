@@ -1,7 +1,6 @@
-import streamlit as st
 # Importing useful libraries
 import streamlit as st
-import utils
+from scripts import utils_2
 
 # For operating system related tasks
 import shutil
@@ -22,31 +21,19 @@ click_data = st.file_uploader(
     type = ['xls']
 )
 
-revenue_data = st.file_uploader(
-    'Please upload the revenue data here',
-    type = ['xls']
-)
-
 if st.button("Analyze"):
 
     temp_click_path = 'temp_click_data.xls'
     temp_revenue_path = 'temp_revenue_data.xls'
     zip_file_path = 'files.zip'
     
-    if click_data and revenue_data:
-
-        if not os.path.exists('synthesized_data'): os.mkdir('synthesized_data')
-            
+    if click_data:
         # Save the uploaded file to the local directory
         with open(temp_click_path, "wb") as f:
             f.write(click_data.getbuffer())
 
-        # Save the uploaded file to the local directory
-        with open(temp_revenue_path, "wb") as f:
-            f.write(revenue_data.getbuffer())
-
         with st.spinner("Analyzing..."):
-            utils.get_report(temp_click_path,temp_revenue_path,zip_file_path)
+            utils_2.get_report(temp_click_path,zip_file_path)
 
         st.success('Report generation complete!')
         st.download_button(
@@ -58,10 +45,5 @@ if st.button("Analyze"):
 
         os.remove(zip_file_path)
         os.remove(temp_click_path)
-        os.remove(temp_revenue_path)
 
-    elif click_data and not revenue_data:
-        st.warning("Please Upload the Revenue Data to continue")
-    elif revenue_data and not click_data:
-        st.warning("Please Upload the Click vs Registration Data to continue")
     else: st.warning("Upload data first please!!!")
