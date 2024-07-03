@@ -509,9 +509,9 @@ def get_report(click_reg_path,zip_file_path):
 
         data_frames['Avg_perc_0%'] = average_perc_0_reg_rate
 
-        dup_must_stop = dup_sorted_df_by_reg_rate[(dup_sorted_df_by_reg_rate['Average Percentage'] == 0) &
+        dup_must_stop = dup_sorted_df_by_reg_rate[(dup_sorted_df_by_reg_rate['Percentage'] == 0) &
                                                   (dup_sorted_df_by_reg_rate['Cake Clicks (All Clicks)'] > 20)]
-        non_dup_must_stop = non_dup_sorted_by_percentage[(non_dup_sorted_by_percentage['Average Percentage'] == 0)&
+        non_dup_must_stop = non_dup_sorted_by_percentage[(non_dup_sorted_by_percentage['Percentage'] == 0)&
                                                   (dup_sorted_df_by_reg_rate['Cake Clicks (All Clicks)'] > 20)]
         must_stop_df = pd.concat(
             [dup_must_stop,non_dup_must_stop],
