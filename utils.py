@@ -543,7 +543,7 @@ def get_report(click_reg_path,zip_file_path):
                 if sheet_name in ['Non-Dup_Sub_IDs_sorted_by_margin','Duplicated_Sorted_by_avg_margin','Pattern (Surfix)']: 
                     conditional_formating = 'margin'
                     
-                if sheet_name in ['Must Stop 0%','Errors'] : error_sheet = True
+                if sheet_name in ['Must Stop 0%','Errors','Avg_perc_0%'] : error_sheet = True
 
                 if sheet_name == 'Abnormal Sub IDs' : warning_sheet = True
 
