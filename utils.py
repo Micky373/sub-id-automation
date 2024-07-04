@@ -564,7 +564,7 @@ def get_report(click_reg_path,zip_file_path):
                     
                     unique_ids = len(list(set(df_for_analysis['S1'].values)))
                    
-                    must_stop = len(list(set(must_stop_df['S1'].values))) - 1
+                    must_stop = len(list(set(must_stop_df['S1'].values)))
                     
                     errors = len(list(set(error_df['S1'].values)))
 
