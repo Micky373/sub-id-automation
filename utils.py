@@ -570,7 +570,7 @@ def get_report(click_reg_path,zip_file_path):
 
                     findings = [
                         f'We have {unique_ids} unique s1',
-                        f'We have {must_stop} s1 Must stop ids 0% ',
+                        f'We have {0 if must_stop in [1,-1] else must_stop} s1 Must stop ids 0% ',
                         f'{below_10} below 10%',
                         f'{below_40_nd_above_10} Below 40 % and above 10%',
                         f'{abv_40} good s1 above 40%',
