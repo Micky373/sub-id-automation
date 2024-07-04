@@ -1,7 +1,7 @@
 # Importing useful libraries
 import OleFileIO_PL # For reading excel files
 import pandas as pd # For dataframe related tasks
-from openpyxl.styles import PatternFill, Font , Alignment# For excel formating
+from openpyxl.styles import PatternFill, Font, Alignment # For excel formating
 from openpyxl.utils import get_column_letter
 import swifter # For paralalizing long taking tasks
 import zipfile # For zipping file together
@@ -109,11 +109,11 @@ def format_sheet(sheet, conditional_formating = False,error_sheet=False,warning_
                 avg_cell = row[avg_col - 1]
                 try:
                     value = float(avg_cell.value)
-                    if value < 40:
+                    if value < 10:
                         row_fill = red_fill
-                    elif 40 <= value < 70:
+                    elif 10 <= value < 40:
                         row_fill = yellow_fill
-                    elif value >= 70:
+                    elif value >= 40:
                         row_fill = green_fill
                     
                     for cell in row:
@@ -212,7 +212,6 @@ def get_report(click_reg_path,zip_file_path):
 
     # Creating an empty directory to save all the findings
     temp_dir = 'synthesized_data/temp_dir/'
-    if not os.path.exists('synthesized_data/'): os.mkdir('synthesized_data/')
     if not os.path.exists(temp_dir): os.mkdir(temp_dir)
 
     # Checking if there is a zipped file and deleting it
@@ -318,7 +317,6 @@ def get_report(click_reg_path,zip_file_path):
             inplace = True
         )
 
-        # st.dataframe(temp_df)
         duplicated_sub_ids = temp_df[temp_df['Number of Repetition'] > 1]['S1'].values
 
         if publisher == 'All Inbox(Jason Jacobs)':
@@ -497,9 +495,6 @@ def get_report(click_reg_path,zip_file_path):
              
         data_frames['Duplicated_Sorted_by_avg_reg_rate'] = dup_sorted_df_by_reg_rate
 
-        data_frames['Abnormal Sub IDs'] = abnormal_df
-        data_frames['Errors'] = error_df
-
         dup_must_stop = dup_sorted_df_by_reg_rate[dup_sorted_df_by_reg_rate['Average Percentage'] == 0]
         non_dup_must_stop = non_dup_sorted_by_percentage[non_dup_sorted_by_percentage['Average Percentage'] == 0]
         average_perc_0_reg_rate = pd.concat(
@@ -507,7 +502,45 @@ def get_report(click_reg_path,zip_file_path):
             axis = 0
         )
 
+        if publisher == 'All Inbox(Jason Jacobs)':
+
+            top_10 = {
+
+            }
+
+            for tracker_id in [7750,8866,8867,8895]:
+                
+                all_in_box = df_for_analysis[df_for_analysis['Revenue Tracker ID'] == tracker_id]
+
+                all_in_box = all_in_box.sort_values('User Registration',ascending = False)
+                grouped_df = all_in_box.groupby(by = 'S1').agg('sum')
+                grouped_df.sort_values('User Registration',ascending = False,inplace = True)
+                check_df = grouped_df.reset_index()
+                check_df = check_df[
+                    [
+                        'S1',
+                        'User Registration',
+                        'Cake Clicks (All Clicks)'
+
+                    ]
+                ]
+
+                check_df['Average Percentage'] = check_df['User Registration']  / check_df['Cake Clicks (All Clicks)']
+
+                check_df['Average Percentage'] = check_df['Average Percentage'].apply(lambda perc:round(perc*100,2))
+                
+                top_10[f'Top_10_Sub_IDs_{tracker_id}'] = check_df.head(10)
+
+            
+            for key in top_10.keys():
+
+                data_frames[key] = top_10[key]
+
+        data_frames['Abnormal Sub IDs'] = abnormal_df
+
         data_frames['Avg_perc_0%'] = average_perc_0_reg_rate
+
+        data_frames['Errors'] = error_df
 
         dup_must_stop = dup_sorted_df_by_reg_rate[(dup_sorted_df_by_reg_rate['Percentage'] == 0) &
                                                   (dup_sorted_df_by_reg_rate['Cake Clicks (All Clicks)'] > 20)]
@@ -537,7 +570,12 @@ def get_report(click_reg_path,zip_file_path):
                 findings = False
 
                 # Apply styles
-                if sheet_name in ['Non-Dup_Sub_IDs_sorted_by_perc','Duplicated_Sorted_by_avg_reg_rate','Pattern (Date)','Pattern (Prefix)']: 
+                if publisher != 'All Inbox(Jason Jacobs)':
+                    top_10 = {}
+
+                if sheet_name in ['Non-Dup_Sub_IDs_sorted_by_perc','Duplicated_Sorted_by_avg_reg_rate','Pattern (Date)','Pattern (Prefix)'] or \
+                    sheet_name in list(top_10.keys()):
+                    
                     conditional_formating = 'registration_rate'
 
                 if sheet_name in ['Non-Dup_Sub_IDs_sorted_by_margin','Duplicated_Sorted_by_avg_margin','Pattern (Surfix)']: 
