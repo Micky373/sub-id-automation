@@ -212,7 +212,6 @@ def get_report(click_reg_path,zip_file_path):
 
     # Creating an empty directory to save all the findings
     temp_dir = 'synthesized_data/temp_dir/'
-    if not os.path.exists('synthesized_data/'): os.mkdir('synthesized_data/')
     if not os.path.exists(temp_dir): os.mkdir(temp_dir)
 
     # Checking if there is a zipped file and deleting it
